@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consolidated Reporting & Analytics Suite</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary-accent: #c09f6b; /* A sophisticated, muted gold/bronze */
+      --primary-accent-hover: #b08f5a;
+
+      --bg-main: #f9f8f6; /* A warm, slightly off-white background */
+      --bg-surface: #ffffff; /* Clean white for primary panels */
+      
+      --text-primary: #333333; /* Dark charcoal for high contrast and readability */
+      --text-secondary: #6c757d;
+      --text-placeholder: #9fa8b1;
+
+      --border-color: #e5e5e5;
+      
+      --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.05);
+      --shadow-interactive: 0 6px 16px rgba(192, 159, 107, 0.2);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
+    body { 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: var(--bg-main); 
+        color: var(--text-primary); 
+        line-height: 1.6; 
+        display: flex; 
+        flex-direction: column; 
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    .app-header { 
+        background: var(--bg-surface); 
+        padding: 20px 40px; 
+        border-bottom: 1px solid var(--border-color); 
+        z-index: 100; 
+        flex-shrink: 0; 
+    }
+    .app-header h1 { font-size: 1.6rem; font-weight: 600; color: var(--text-primary); letter-spacing: -0.5px; }
+    .app-header span { font-weight: 400; color: var(--text-secondary); }
+    .app-container { display: flex; flex-grow: 1; overflow: hidden; }
+    .input-panel { 
+        width: 460px; 
+        background: var(--bg-surface); 
+        border-right: 1px solid var(--border-color); 
+        padding: 24px 0;
+        overflow-y: auto; 
+        flex-shrink: 0;
+        transition: box-shadow 0.3s ease;
+    }
+    .input-panel:hover {
+        box-shadow: var(--shadow-soft);
+    }
+    .output-panel { flex-grow: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; }
+    .output-wrapper { flex-grow: 1; display: flex; align-items: center; justify-content: center; }
+    .tool-accordion .tool-card { border-bottom: 1px solid var(--border-color); }
+    .tool-header { 
+        padding: 18px 40px; 
+        cursor: pointer; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        background: transparent; 
+        transition: background 0.2s ease;
+        position: relative; 
+    }
+    .tool-header:after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: var(--primary-accent);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+    }
+    .tool-card.active .tool-header:after {
+        transform: scaleY(1);
+    }
+    .tool-header:hover { background-color: #fcfbfa; }
+    .tool-header h2 { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+    .tool-header .chevron { transition: transform 0.3s ease; font-size: 1.2rem; color: var(--text-secondary); }
+    .tool-body { max-height: 0; overflow: hidden; padding: 0 40px; background-color: #fdfdfc; transition: max-height 0.4s ease-out, padding 0.4s ease-out; }
+    .tool-card.active .tool-body { max-height: 1000px; padding: 24px 40px; }
+    .tool-card.active .tool-header .chevron { transform: rotate(180deg); }
+    .upload-group { margin-bottom: 24px; }
+    .upload-label { display: block; font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+    .file-name-hint { font-size: 0.85rem; color: var(--text-secondary); margin-top: -6px; margin-bottom: 10px; display: block; }
+    .drop-zone { position: relative; border: 1px dashed #d1d1d1; border-radius: 8px; padding: 28px; text-align: center; background-color: var(--bg-main); cursor: pointer; transition: all 0.2s ease; }
+    .drop-zone.dragover { border-color: var(--primary-accent); background-color: #fffaf2; box-shadow: inset 0 0 10px rgba(192, 159, 107, 0.1); }
+    .drop-zone.has-file { border-color: #92b494; background-color: #f7fff7; }
+    .drop-zone input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .drop-zone-icon { color: var(--primary-accent); margin-bottom: 12px; width: 32px; height: 32px; display: inline-block; opacity: 0.7; }
+    .drop-zone-text { font-size: 0.95rem; color: var(--text-secondary); font-weight: 500;}
+    .drop-zone.has-file .drop-zone-icon { color: #2e7d32; }
+    .drop-zone.has-file .drop-zone-text { color: #2e7d32; font-weight: 600; }
+    .btn { width: 100%; height: 48px; border: none; border-radius: 8px; color: white; font-size: 1.05rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; margin-top: 16px; background-color: var(--primary-accent); }
+    .btn:hover { background-color: var(--primary-accent-hover); transform: translateY(-2px); box-shadow: var(--shadow-interactive); }
+    .output-placeholder { text-align: center; color: var(--text-placeholder); }
+    .output-placeholder svg { width: 90px; height: 90px; margin-bottom: 16px; color: #e0e0e0; }
+    .results-container { width: 100%; animation: fadeIn 0.5s ease-out; }
+    .results-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+    .results-title-group { flex-grow: 1; }
+    .results-title { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
+    .results-subtitle { font-size: 0.9rem; color: var(--text-secondary); font-weight: 400;}
+    .results-actions { display: flex; gap: 0.75rem; }
+    .btn-secondary { background: none; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 8px 16px; font-size: 0.875rem; font-weight: 500; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-secondary:hover { background-color: var(--bg-surface); border-color: #b0b0b0; color: var(--text-primary); box-shadow: var(--shadow-soft);}
+    .loading-spinner { width: 48px; height: 48px; border: 4px solid #e0e0e0; border-top: 4px solid var(--primary-accent); border-radius: 50%; animation: spin 1s linear infinite; }
+    .table-container { overflow: auto; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface); max-height: calc(100vh - 280px); box-shadow: var(--shadow-soft); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; user-select: none; }
+    th { background-color: #fcfcfc; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; top: 0; z-index: 10; font-size: 0.8rem; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background-color: #fdfbfa; }
+    td:first-child, th:first-child { position: sticky; left: 0; border-right: 1px solid var(--border-color);}
+    td:first-child { background-color: var(--bg-surface); z-index: 1; }
+    th:first-child { z-index: 11; }
+    tr:hover td:first-child { background-color: #fdfbfa; }
+    .diff { background: #fffde7 !important; color: #e65100 !important; font-weight: 600 !important; }
+    td.numeric, th.numeric { text-align: right; }
+    th.centered { text-align: center; }
+    td.cell-selected, th.cell-selected { background-color: #fff4e1 !important; box-shadow: inset 0 0 0 1px var(--primary-accent); }
+    .toast-notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: var(--text-primary); color: white; padding: 12px 24px; border-radius: 8px; box-shadow: var(--shadow-soft); z-index: 9999; opacity: 0; transition: opacity 0.3s ease, bottom 0.3s ease; }
+    .toast-notification.show { opacity: 1; bottom: 30px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 1024px) { html, body { height: auto; overflow: auto; } .app-container { flex-direction: column; overflow: visible; } .input-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); max-height: none; overflow-y: visible;} .output-panel { padding: 24px; } .results-header { flex-direction: column; align-items: flex-start; } .table-container { max-height: 60vh; } }
+  </style>
+</head>
+<body>
+
+  <header class="app-header"><h1>Consolidated <span>Reporting & Analytics Suite</span></h1></header>
+
+  <main class="app-container">
+    <aside class="input-panel">
+      <!-- Refined tool naming for a cleaner, more professional presentation -->
+      <div class="tool-accordion" id="toolAccordion">
+        <div class="tool-card active" data-tool="tool1"><div class="tool-header"><h2>AdX & Private Auction</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">AdX & PMP Daily Report</label><span class="file-name-hint">e.g., Kohl's Daily-AdX - by type</span><div class="drop-zone" data-input-id="inputFile1"><input type="file" id="inputFile1" accept=".xlsx,.xls,.xlsm,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="bidding"><div class="tool-header"><h2>Open Bidding Partners</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Open Bidding Report</label><span class="file-name-hint">e.g., Kohl's Daily-Open Bidding</span><div class="drop-zone" data-input-id="biddingFile"><input type="file" id="biddingFile" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="tool2"><div class="tool-header"><h2>Rubicon / Magnite</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Magnite Report File</label><span class="file-name-hint">e.g., [Magnite Report] Daily Kohls...</span><div class="drop-zone" data-input-id="excelFile2"><input type="file" id="excelFile2" accept=".xlsx, .xls"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="citrusPivot"><div class="tool-header"><h2>PubMatic OpenWrap</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">OpenWrap Report</label><span class="file-name-hint">e.g., Pubmatic Openwrap Performance...</span><div class="drop-zone" data-input-id="citrusFile"><input type="file" id="citrusFile" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="tool3"><div class="tool-header"><h2>Verizon / Yahoo</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Verizon/Yahoo Report</label><span class="file-name-hint">e.g., Report: Kohls (SSP) - Daily Net...</span><div class="drop-zone" data-input-id="fileInput3"><input type="file" id="fileInput3" accept=".xlsx,.xls,.xlsb,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="tool4"><div class="tool-header"><h2>Xandr / AppNexus</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Xandr Report File</label><span class="file-name-hint">e.g., Your AppNexus Report Xandr...</span><div class="drop-zone" data-input-id="xanderFile4"><input type="file" id="xanderFile4" accept=".xlsx, .xls, .csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="tool5"><div class="tool-header"><h2>TripleLift (HB)</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">TripleLift Report</label><span class="file-name-hint">e.g., Kohl's Header</span><div class="drop-zone" data-input-id="fileInput5"><input type="file" id="fileInput5" accept=".xlsx,.xls,.xlsb"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="tool6"><div class="tool-header"><h2>Cadent</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Cadent Report</label><span class="file-name-hint">e.g., Aperture MX SSP Citrus Ads Daily...</span><div class="drop-zone" data-input-id="fileInput6"><input type="file" id="fileInput6" accept=".xlsx, .xls, .csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="pivot"><div class="tool-header"><h2>Epsilon</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Epsilon Revenue Report</label><span class="file-name-hint">e.g., Epsilon Access | Last 7 Revenue...</span><div class="drop-zone" data-input-id="pivotFile"><input type="file" id="pivotFile" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="tool7"><div class="tool-header"><h2>Media.net (HB)</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Media.net Report</label><span class="file-name-hint">e.g., Media.net (HB) - Kohls Daily...</span><div class="drop-zone" data-input-id="fileInput7"><input type="file" id="fileInput7" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="tool8"><div class="tool-header"><h2>Sharethrough (HB)</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Sharethrough Report</label><span class="file-name-hint">e.g., Sharethrough(HB)- Daily Net...</span><div class="drop-zone" data-input-id="upload8"><input type="file" id="upload8" accept=".xlsx,.xls,.xlsb,.xlsm"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+        <div class="tool-card" data-tool="impressions"><div class="tool-header"><h2>Programmatic Avails</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">1. Total Avails File</label><span class="file-name-hint">e.g., Kohl's Daily - Total Avails Imps</span><div class="drop-zone" data-input-id="impressionsFile1"><input type="file" id="impressionsFile1" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><div class="upload-group"><label class="upload-label">2. Paid Impressions File</label><span class="file-name-hint">e.g., Kohl's-Daily Paid Imps</span><div class="drop-zone" data-input-id="impressionsFile2"><input type="file" id="impressionsFile2" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3.75 19.5h16.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0020.25 4.5H3.75A2.25 2.25 0 001.5 6.75v10.5A2.25 2.25 0 003.75 19.5z" /></svg></div><span class="drop-zone-text">Drag & Drop or Click to Upload</span></div></div><button class="btn" data-action="process">Generate Report</button></div></div>
+      </div>
+    </aside>
+    <section class="output-panel" id="outputPanel"><!-- Content injected by JS --></section>
+  </main>
+
+  <script>
+  (function() {
+    'use strict';
+    
+    // Standardized tool names for a cleaner UI
+    const TOOL_CONFIG = {
+        'tool1': { name: 'AdX & Private Auction', processor: processTool1 },
+        'bidding': { name: 'Open Bidding Partners', processor: processBiddingData },
+        'tool2': { name: 'Rubicon/Magnite', processor: processTool2 },
+        'citrusPivot': { name: 'PubMatic OpenWrap', processor: processCitrusAdPivotData },
+        'tool3': { name: 'Verizon/Yahoo', processor: processTool3 },
+        'tool4': { name: 'Xandr/AppNexus', processor: processTool4 },
+        'tool5': { name: 'TripleLift (HB)', processor: processTool5 },
+        'tool6': { name: 'Cadent', processor: processTool6 },
+        'pivot': { name: 'Epsilon', processor: processPivotData },
+        'tool7': { name: 'Media.net (HB)', processor: processTool7 },
+        'tool8': { name: 'Sharethrough (HB)', processor: processTool8 },
+        'impressions': { name: 'Programmatic Avails', isMultiFile: true, processor: processImpressionsData },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setupAccordion();   
+        setupDropZones();   
+        setupToolButtons();
+        showPlaceholder();  
+    });
+    
+    const outputPanel = document.getElementById('outputPanel'); 
+
+    function setupAccordion() {
+        const accordion = document.getElementById('toolAccordion');
+        accordion.addEventListener('click', (e) => {
+            const header = e.target.closest('.tool-header');
+            if (!header) return;
+            const card = header.parentElement;
+            const isActive = card.classList.contains('active');
+            accordion.querySelectorAll('.tool-card').forEach(c => c.classList.remove('active'));
+            if (!isActive) card.classList.add('active');
+        });
+    }
+
+    function setupDropZones() {
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            const input = document.getElementById(zone.dataset.inputId);
+            if (!input) return;
+            zone.addEventListener('click', () => input.click());
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evName => zone.addEventListener(evName, e => { e.preventDefault(); e.stopPropagation(); }));
+            ['dragenter', 'dragover'].forEach(evName => zone.addEventListener(evName, () => zone.classList.add('dragover')));
+            ['dragleave', 'drop'].forEach(evName => zone.addEventListener(evName, () => zone.classList.remove('dragover')));
+            zone.addEventListener('drop', e => {
+                input.files = e.dataTransfer.files;
+                updateFileDisplay(zone, input.files[0]);
+            });
+            input.addEventListener('change', () => updateFileDisplay(zone, input.files[0]));
+        });
+    }
+    
+    function setupToolButtons() {
+        document.querySelectorAll('.tool-card button[data-action="process"]').forEach(button => {
+            const card = button.closest('.tool-card');
+            const toolKey = card.dataset.tool;
+            const config = TOOL_CONFIG[toolKey];
+            if (config) {
+                button.addEventListener('click', () => {
+                    outputPanel.scrollTo({ top: 0, behavior: 'smooth' });
+                    if (config.isMultiFile) {
+                        config.processor();
+                    } else {
+                        const inputId = card.querySelector('input[type="file"]').id;
+                        processFile(inputId, config.name, config.processor);
+                    }
+                });
+            }
+        });
+    }
+    
+    function updateFileDisplay(zone, file) {
+        const textSpan = zone.querySelector('.drop-zone-text');
+        if (file) {
+            textSpan.innerHTML = `✓ ${file.name}`;
+            zone.classList.add('has-file');
+        } else {
+            textSpan.innerHTML = 'Drag & Drop or Click to Upload';
+            zone.classList.remove('has-file');
+        }
+    }
+    
+    function showPlaceholder() { outputPanel.innerHTML = `<div class="output-wrapper"><div class="output-placeholder"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /></svg><h2>Your Results Will Appear Here</h2><p>Select a tool, upload your file(s), and generate a report.</p></div></div>`; }
+    function showLoading() { outputPanel.innerHTML = `<div class="output-wrapper"><div class="loading-spinner"></div></div>`; }
+    
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 2500);
+    }
+    
+    function renderOutput(title, htmlContent, tableId, options = {}) {
+        const { error = null, fileName = '', tableData = null } = options;
+        let content = '';
+        if (error) {
+            content = `<div class="output-wrapper"><p style="background:#fff2f2; color:#d32f2f; padding:1.5em; border-radius:8px; border:1px solid #ffcccc; max-width: 80%;"><b>Error in ${title}:</b> ${error}</p></div>`;
+        } else if (htmlContent && tableId) {
+            htmlContent = htmlContent.replace('<table', `<table id="${tableId}"`);
+            content = `<div class="results-container"><div class="results-header"><div class="results-title-group"><h2 class="results-title">${title} Report</h2>${fileName ? `<p class="results-subtitle">Source File: ${fileName}</p>` : ''}</div><div class="results-actions"><button class="btn-secondary" id="copyBtn-${tableId}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 100 2h4a1 1 0 100-2H5z"/></svg>Copy Table</button><button class="btn-secondary" id="downloadBtn-${tableId}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download XLSX</button></div></div><p style="text-align:center; color: var(--text-placeholder); font-size: 0.9rem; margin-bottom: 16px;">✨ <strong>Tip:</strong> Click and drag to select multiple cells, then use <strong>Ctrl+C</strong> to copy.</p><div class="table-container">${htmlContent}</div></div>`;
+        }
+        outputPanel.innerHTML = content;
+        if (tableId && !error) {
+            makeTableSelectable(tableId);
+            const downloadBtn = document.getElementById(`downloadBtn-${tableId}`);
+            const copyBtn = document.getElementById(`copyBtn-${tableId}`);
+            if (downloadBtn && tableData) {
+                downloadBtn.addEventListener('click', () => downloadXLSX(tableData, `${title.replace(/[\s/]/g, '_')}_Report.xlsx`));
+            } else if (downloadBtn) {
+                downloadBtn.disabled = true;
+                downloadBtn.title = "Download not available.";
+            }
+            if (copyBtn) copyBtn.addEventListener('click', () => copyTableToClipboard(tableId));
+        }
+    }
+    
+    function readFileAsArrayBuffer(file) { return new Promise((resolve, reject) => { if (!file) return reject(new Error('Please select a file first.')); const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.onerror = e => reject(new Error('Error reading file: ' + e.target.error.name)); reader.readAsArrayBuffer(file); }); }
+    function downloadXLSX(data, fileName) { try { const worksheet = XLSX.utils.json_to_sheet(data); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, 'ProcessedData'); XLSX.writeFile(workbook, fileName); showToast('Download started!'); } catch (e) { showToast('Error creating XLSX file.'); console.error(e); } }
+    function copyTableToClipboard(tableId) { const table = document.getElementById(tableId); if (!table) return; let tsv = Array.from(table.rows).map(row => Array.from(row.cells).map(cell => cell.innerText.trim().replace(/\t/g, " ").replace(/\n/g, " ")).join('\t')).join('\n'); navigator.clipboard.writeText(tsv).then(() => showToast('Table copied to clipboard!'), () => showToast('Failed to copy table.')); }
+    
+    function makeTableSelectable(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const tableContainer = table.closest('.table-container');
+        if (!tableContainer) return;
+        let isSelecting = false, startCell = null, endCell = null;
+        const cells = table.querySelectorAll('td, th');
+        tableContainer.addEventListener('mousedown', e => { const targetCell = e.target.closest('td, th'); if (!targetCell) return; e.preventDefault(); isSelecting = true; startCell = endCell = targetCell; cells.forEach(c => c.classList.remove('cell-selected')); updateSelection(); });
+        tableContainer.addEventListener('mousemove', e => { if (!isSelecting) return; const targetCell = e.target.closest('td, th'); if (targetCell) endCell = targetCell; updateSelection(); });
+        document.addEventListener('mouseup', () => { isSelecting = false; });
+        function updateSelection() { cells.forEach(cell => cell.classList.remove('cell-selected')); if (!startCell || !endCell) return; const startRow = startCell.parentElement.rowIndex, endRow = endCell.parentElement.rowIndex; const startCol = startCell.cellIndex, endCol = endCell.cellIndex; const minRow = Math.min(startRow, endRow), maxRow = Math.max(startRow, endRow); const minCol = Math.min(startCol, endCol), maxCol = Math.max(startCol, endCol); for (let i = minRow; i <= maxRow; i++) for (let j = minCol; j <= maxCol; j++) table.rows[i]?.cells[j]?.classList.add('cell-selected'); }
+    }
+
+    document.addEventListener('copy', e => {
+        const selectedCells = document.querySelectorAll('.cell-selected');
+        if (selectedCells.length === 0) return;
+        e.preventDefault();
+        const rows = new Map();
+        selectedCells.forEach(cell => { const row = cell.parentElement; if (!rows.has(row)) rows.set(row, []); rows.get(row).push(cell); });
+        const sortedRows = Array.from(rows.keys()).sort((a, b) => a.rowIndex - b.rowIndex);
+        let tsv = sortedRows.map(row => rows.get(row).sort((a, b) => a.cellIndex - b.cellIndex).map(cell => cell.innerText.replace(/\t/g, " ").replace(/\n/g, " ")).join('\t')).join('\n');
+        if (e.clipboardData) { e.clipboardData.setData('text/plain', tsv); showToast('Selected cells copied!'); } else { showToast('Failed to copy. Your browser may be too old.'); }
+    });
+    
+    // --- UTILITY FUNCTIONS ---
+    function formatDate(dateValue) {
+        if (!dateValue && dateValue !== 0) return '';
+        let date;
+        if (typeof dateValue === 'number' && dateValue > 10000) {
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        } else {
+            const dateString = String(dateValue);
+            const parts = dateString.split(' ')[0].split(/[/.-]/);
+            if (parts.length === 3) {
+                let year, month, day;
+                if (parts[0].length === 4) { year = parseInt(parts[0], 10); month = parseInt(parts[1], 10) - 1; day = parseInt(parts[2], 10); } 
+                else { month = parseInt(parts[0], 10) - 1; day = parseInt(parts[1], 10); year = parseInt(parts[2], 10); }
+                date = new Date(Date.UTC(year, month, day));
+            } else { date = new Date(dateValue); }
+        }
+        if (isNaN(date.getTime())) return '';
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth() + 1;
+        const day = date.getUTCDate();
+        return `${month}/${day}/${year}`;
+    }
+    function formatNumber(num) { const val = Number(String(num).replace(/,/g, '')); return isNaN(val) ? '0' : val.toLocaleString('en-US'); }
+    function formatCurrency(num, precision = 2) { const val = parseFloat(String(num).replace(/[$,]/g, '')); return isNaN(val) ? (0).toFixed(precision) : val.toFixed(precision); }
+    
+    // --- CORE PROCESSING LOGIC ---
+    async function processFile(inputId, toolName, processor) {
+        showLoading();
+        const file = document.getElementById(inputId).files[0];
+        try {
+            if (!file) throw new Error('Please select a file first.');
+            const buffer = await readFileAsArrayBuffer(file);
+            const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+            await processor(workbook, file.name); 
+        } catch (error) {
+            renderOutput(toolName, null, null, { error: error.message, fileName: file ? file.name : '' });
+        }
+    }
+    // All tool-specific process functions below this line remain the same, as they handle the data logic, not the UI presentation.
+    // They now output consistently named columns for a better user experience.
+
+    async function processImpressionsData() { showLoading(); const file1 = document.getElementById('impressionsFile1').files[0]; const file2 = document.getElementById('impressionsFile2').files[0]; try { if (!file1 || !file2) throw new Error('Please upload both Excel files.'); const [buffer1, buffer2] = await Promise.all([readFileAsArrayBuffer(file1), readFileAsArrayBuffer(file2)]); const wb1 = XLSX.read(buffer1, { type: 'array', cellDates: true }); const wb2 = XLSX.read(buffer2, { type: 'array', cellDates: true }); const readAndProcessSheet = (wb, fileName, colConfig) => { const sheetName = wb.SheetNames.find(name => name.toLowerCase().includes("report data")); if (!sheetName) throw new Error(`Sheet "Report data" not found in ${fileName}.`); const raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header: 1, defval: null}); let headerRowIndex = raw.findIndex(r => r && r.some(c => String(c).toLowerCase().includes("date")) && r.some(c => String(c).toLowerCase().includes("impressions"))); if (headerRowIndex === -1) throw new Error(`Could not find header row in ${fileName}.`); const headers = raw[headerRowIndex].map(h => String(h).toLowerCase()); const colMap = { d: headers.indexOf("date"), u: headers.indexOf(colConfig.unfilled), f: headers.indexOf(colConfig.filled), p: headers.indexOf(colConfig.paid) }; const dataMap = new Map(); raw.slice(headerRowIndex+1).forEach(row => { if (!row) return; const date = formatDate(row[colMap.d]); if(!date) return; const current = dataMap.get(date) || { u: 0, f: 0, p: 0 }; if(colMap.u > -1) current.u += +row[colMap.u] || 0; if(colMap.f > -1) current.f += +row[colMap.f] || 0; if(colMap.p > -1) current.p += +row[colMap.p] || 0; dataMap.set(date, current); }); return dataMap; }; const map1 = readAndProcessSheet(wb1, file1.name, { unfilled: "unfilled impressions", filled: "total impressions" }); const map2 = readAndProcessSheet(wb2, file2.name, { paid: "total impressions" }); const allDates = [...new Set([...map1.keys(), ...map2.keys()])].sort((a, b) => new Date(a) - new Date(b)); let html = `<thead><tr><th>Date</th><th class="numeric">Unfilled Impressions</th><th class="numeric">Filled Impressions</th><th class="numeric">Total Avails</th><th class="numeric">Paid Impressions</th><th class="numeric diff">Difference</th></tr></thead><tbody>`; const tableData = []; allDates.forEach(date => { const s1 = map1.get(date) || {u:0,f:0}; const s2Paid = (map2.get(date) || {p:0}).p; const total = s1.u + s1.f; const rowData = { Date: date, 'Unfilled Impressions': s1.u, 'Filled Impressions': s1.f, 'Total Avails': total, 'Paid Impressions': s2Paid, Difference: total - s2Paid }; tableData.push(rowData); html += `<tr><td>${date}</td><td class="numeric">${formatNumber(s1.u)}</td><td class="numeric">${formatNumber(s1.f)}</td><td class="numeric">${formatNumber(total)}</td><td class="numeric">${formatNumber(s2Paid)}</td><td class="numeric diff">${formatNumber(total - s2Paid)}</td></tr>`; }); renderOutput("Programmatic Avails Analysis", `<table>${html}</tbody></table>`, "impressionsResultTable", { fileName: `${file1.name} & ${file2.name}`, tableData }); } catch (error) { renderOutput("Programmatic Avails", null, null, { error: error.message }); } }
+    async function processBiddingData(workbook, fileName) { const toolName = "Open Bidding Partners"; try { const PARTNER_ORDER = ['Sovrn OB', 'Rubicon OB', 'Media.net OB', 'PubMatic OB', 'TripleLift', 'Sharethrough OB', 'OneTag OB']; const PARTNER_MAPPING = {'sov_eb':'Sovrn OB', 'sovrn':'Sovrn OB', 'rp eb':'Rubicon OB', 'rubicon':'Rubicon OB', 'media.net':'Media.net OB', 'pubmatic':'PubMatic OB', 'triplelift':'TripleLift', 'sharethrough':'Sharethrough OB', 'onetag':'OneTag OB'}; const sheetName = workbook.SheetNames.find(name => name.toLowerCase().includes("report data")); if (!sheetName) throw new Error(`Sheet "Report data" not found.`); const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: null, raw: false, dateNF: 'm/d/yyyy' }); let headerRowIndex = raw.findIndex(r => r && r.some(c => String(c).toLowerCase().includes("yield partner"))); if(headerRowIndex === -1) throw new Error(`Could not find header row with 'Yield Partner'.`); const headers = raw[headerRowIndex].map(h => String(h).trim().toLowerCase()); const colMap = { d: headers.findIndex(h => h.includes("date")), n: headers.findIndex(h => h.includes("yield partner")), i: headers.findIndex(h => h.includes("yield group impression")), r: headers.findIndex(h => h.includes("yield group estimated revenue")) }; if (Object.values(colMap).some(i=>i===-1)) throw new Error(`Could not find required columns: Date, Yield Partner, Impressions, or Revenue.`); const pivotedData = new Map(); raw.slice(headerRowIndex + 1).forEach(row => { if(!row || !row[colMap.d]) return; const dateStr = formatDate(row[colMap.d]); const partnerName = String(row[colMap.n] || '').toLowerCase().trim(); const canonicalPartner = PARTNER_MAPPING[partnerName]; if (!dateStr || !canonicalPartner) return; if (!pivotedData.has(dateStr)) pivotedData.set(dateStr, {}); const dateEntry = pivotedData.get(dateStr); const existingData = dateEntry[canonicalPartner] || { imps: 0, rev: 0 }; dateEntry[canonicalPartner] = { imps: existingData.imps + (Number(row[colMap.i]) || 0), rev: existingData.rev + (parseFloat(String(row[colMap.r]).replace(/[^0-9.-]+/g, '')) || 0), }; }); if(pivotedData.size === 0) throw new Error("No valid data rows found to process."); let html = `<thead><tr><th rowspan="2">Date</th>${PARTNER_ORDER.map(col => `<th colspan="3" class="centered">${col}</th>`).join('')}</tr><tr>${PARTNER_ORDER.map(() => `<th class="numeric">Impressions</th><th class="numeric">Net Revenue</th><th class="numeric">eCPM</th>`).join('')}</tr></thead><tbody>`; const sortedDates = [...pivotedData.keys()].sort((a,b) => new Date(a) - new Date(b)); const tableData = []; for(const date of sortedDates) { const dateData = pivotedData.get(date); let rowHtml = `<tr><td>${date}</td>`; let rowData = { Date: date }; PARTNER_ORDER.forEach(colName => { const d = dateData[colName] || { imps: 0, rev: 0 }; const ecpm = d.imps > 0 ? (d.rev / d.imps) * 1000 : 0; rowData[`${colName} Impressions`] = d.imps; rowData[`${colName} Net Revenue`] = d.rev; rowData[`${colName} eCPM`] = ecpm; rowHtml += `<td class="numeric">${formatNumber(d.imps)}</td><td class="numeric">$${formatCurrency(d.rev)}</td><td class="numeric">$${formatCurrency(ecpm)}</td>`; }); rowHtml += '</tr>'; html += rowHtml; tableData.push(rowData); } renderOutput('Open Bidding Horizontal', `<table>${html}</tbody></table>`, 'biddingResultTable', { fileName, tableData }); } catch (error) { renderOutput(toolName, null, null, { error: error.message, fileName }); } }
+    function processPivotData(workbook, fileName) { const raw = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: null }); if (!raw.length) throw new Error("Sheet is empty."); let headerRowIndex = -1; for (let i = raw.length - 1; i >= 0; i--) { if (raw[i] && raw[i].some(c => String(c).toLowerCase().includes("earning"))) { headerRowIndex = i; break; } } if (headerRowIndex === -1) throw new Error("Could not find header row with 'Earnings'."); const headers = raw[headerRowIndex].map(h => String(h).toLowerCase()); const colMap = { d: headers.indexOf("date"), i: headers.indexOf("impressions"), e: headers.findIndex(h => h.includes("earning")) }; if (Object.values(colMap).some(i => i === -1)) throw new Error("Columns 'Date', 'Impressions', or 'Earnings' missing."); const pivot = {}; raw.slice(headerRowIndex+1).forEach(row => { if(!row || !row[colMap.d]) return; const date = formatDate(row[colMap.d]); if (!date) return; const p = pivot[date] || { i: 0, e: 0 }; p.i += parseInt(String(row[colMap.i] || 0).replace(/,/g, '')) || 0; p.e += parseFloat(String(row[colMap.e] || 0).replace(/[$,]/g, '')) || 0; pivot[date] = p; }); if(Object.keys(pivot).length === 0) throw new Error("No valid data rows found."); const rows = Object.entries(pivot).map(([date, data]) => ({ Date: date, Impressions: data.i, 'Net Revenue': data.e })).sort((a, b) => new Date(a.Date) - new Date(b.Date)); const totals = rows.reduce((acc, r) => ({ i: acc.i + r.Impressions, e: acc.e + r['Net Revenue'] }), { i: 0, e: 0 }); let html = `<thead><tr><th>Date</th><th class="numeric">Impressions</th><th class="numeric">Net Revenue</th></tr></thead><tbody>`; rows.forEach(r => html += `<tr><td>${r.Date}</td><td class="numeric">${formatNumber(r.Impressions)}</td><td class="numeric">$${formatCurrency(r['Net Revenue'])}</td></tr>`); html += `<tr style="font-weight:bold; background:var(--bg-main);"><td style="font-weight:600;">Grand Total</td><td class="numeric">${formatNumber(totals.i)}</td><td class="numeric">$${formatCurrency(totals.e)}</td></tr></tbody>`; renderOutput("Epsilon", `<table>${html}</table>`, "pivotResultTable", { fileName, tableData: [...rows, {Date: 'Grand Total', Impressions: totals.i, 'Net Revenue': totals.e}] }); }
+    function processCitrusAdPivotData(workbook, fileName) { const raw = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: null }); let headerRowIndex = -1; for (let i = raw.length - 1; i >= 0; i--) { if (raw[i] && raw[i].some(c => String(c).toLowerCase().includes("net revenue"))) { headerRowIndex = i; break; } } if (headerRowIndex === -1) throw new Error("Required column 'Net Revenue' not found."); const headers = raw[headerRowIndex].map(h => String(h).toLowerCase()); const colMap = { d: headers.indexOf("date"), r: headers.findIndex(h => h.includes("net revenue")), i: headers.findIndex(h => h.includes("paid impressions")) }; if (Object.values(colMap).some(idx => idx === -1)) throw new Error("Missing 'Date', 'Paid Impressions', or 'Net Revenue'."); const pivot = {}; raw.slice(headerRowIndex+1).forEach(row => { if(!row || !row[colMap.d]) return; const date = formatDate(row[colMap.d]); if (!date) return; const p = pivot[date] || { r: 0, i: 0 }; p.r += parseFloat(String(row[colMap.r] || 0).replace(/[$,]/g, '')) || 0; p.i += parseInt(String(row[colMap.i] || 0).replace(/,/g, '')) || 0; pivot[date] = p; }); if(Object.keys(pivot).length === 0) throw new Error("No valid data rows could be processed."); const rows = Object.entries(pivot).map(([d, data]) => ({ Date: d, 'Impressions': data.i, 'Net Revenue': data.r })).sort((a, b) => new Date(a.Date) - new Date(b.Date)); const totals = rows.reduce((acc, r) => ({ r: acc.r + r['Net Revenue'], i: acc.i + r['Impressions'] }), { r: 0, i: 0 }); let html = `<thead><tr><th>Date</th><th class="numeric">Impressions</th><th class="numeric">Net Revenue</th></tr></thead><tbody>`; rows.forEach(r => html += `<tr><td>${r.Date}</td><td class="numeric">${formatNumber(r['Impressions'])}</td><td class="numeric">$${formatCurrency(r['Net Revenue'], 4)}</td></tr>`); html += `<tr style="font-weight:bold; background:var(--bg-main);"><td style="font-weight:600;">Grand Total</td><td class="numeric">${formatNumber(totals.i)}</td><td class="numeric">$${formatCurrency(totals.r, 4)}</td></tr></tbody>`; renderOutput("PubMatic OpenWrap Summary", `<table>${html}</table>`, "citrusPivotResultTable", { fileName, tableData: [...rows, {Date: 'Grand Total', 'Impressions': totals.i, 'Net Revenue': totals.r}] }); }
+    function processTool1(workbook, fileName) { const sheetName = workbook.SheetNames.find(name => name.trim().toLowerCase() === 'report data'); if (!sheetName) throw new Error(`Sheet "report data" not found.`); const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: null }); const headerRowIndex = raw.findIndex(r => r && r.some(c => String(c).toLowerCase() === 'programmatic channel')); if(headerRowIndex === -1) throw new Error("Could not find header with 'Programmatic channel'."); const headers = raw[headerRowIndex].map(h => String(h).toLowerCase()); const colMap = { d: headers.indexOf('date'), c: headers.indexOf('programmatic channel'), i: headers.findIndex(h => h.includes('impressions')), r: headers.findIndex(h => h.includes('revenue')) }; if(Object.values(colMap).some(i=>i===-1)) throw new Error("Missing Date, Channel, Impressions or Revenue columns."); const grouped = {}; raw.slice(headerRowIndex+1).forEach(row => { if(!row || !row[colMap.d]) return; const dateRaw = formatDate(row[colMap.d]); const channel = String(row[colMap.c] || '').trim(); if (!dateRaw || channel.toLowerCase() === 'total' || !channel) return; const imps = parseInt(row[colMap.i]); const rev = parseFloat(String(row[colMap.r]).replace(/[$,]/g, '')); if (isNaN(imps) || isNaN(rev)) return; if (!grouped[dateRaw]) grouped[dateRaw] = { adxImps: 0, adxRev: 0, pmpImps: 0, pmpRev: 0 }; if (channel === 'Open Auction') { grouped[dateRaw].adxImps += imps; grouped[dateRaw].adxRev += rev; } if (channel === 'Private Auction') { grouped[dateRaw].pmpImps += imps; grouped[dateRaw].pmpRev += rev; } }); const result = Object.entries(grouped).sort((a, b) => new Date(a[0]) - new Date(b[0])).map(([date, data]) => ({ Date: date, 'AdX Impressions': data.adxImps, 'AdX Net Revenue': data.adxRev, 'AdX eCPM': data.adxImps ? (data.adxRev/data.adxImps)*1000 : 0, 'PMP Impressions': data.pmpImps, 'PMP Net Revenue': data.pmpRev, 'PMP eCPM': data.pmpImps ? (data.pmpRev/data.pmpImps)*1000 : 0 })); if (result.length === 0) throw new Error('No valid data rows found.'); let html = `<thead><tr><th rowspan="2">Date</th><th colspan="3" class="centered">AdX</th><th colspan="3" class="centered">Private Auction (PMP)</th></tr><tr><th class="numeric">Impressions</th><th class="numeric">Net Revenue</th><th class="numeric">eCPM</th><th class="numeric">PMP Impressions</th><th class="numeric">PMP Net Revenue</th><th class="numeric">PMP eCPM</th></tr></thead><tbody>`; result.forEach(r => { html += `<tr><td>${r.Date}</td><td class="numeric">${formatNumber(r['AdX Impressions'])}</td><td class="numeric">$${formatCurrency(r['AdX Net Revenue'])}</td><td class="numeric">$${formatCurrency(r['AdX eCPM'])}</td><td class="numeric">${formatNumber(r['PMP Impressions'])}</td><td class="numeric">$${formatCurrency(r['PMP Net Revenue'])}</td><td class="numeric">$${formatCurrency(r['PMP eCPM'])}</td></tr>`; }); renderOutput('AdX & PMP Daily', `<table>${html}</tbody></table>`, 'outputTable1', { fileName, tableData: result }); }
+    function processTool2(workbook, fileName) { const sheetName = workbook.SheetNames.find(name => name.toLowerCase() === "report"); if (!sheetName) throw new Error('Sheet "report" not found.'); const rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {defval: null, cellDates: true}); if (!rawJson.length) throw new Error('"report" sheet is empty.'); const headers = Object.keys(rawJson[0]); const dateCol = headers.find(h => h.toLowerCase().includes("date")); const revenueCol = headers.find(h => h.toLowerCase().includes("revenue")); const impsCol = headers.find(h => h.toLowerCase().includes("impression")); if (!dateCol) throw new Error("No 'Date' column found."); const jsonData = rawJson.map(row => { row.jsDate = new Date(formatDate(row[dateCol])); return row; }).sort((a,b) => a.jsDate - b.jsDate); let html = `<thead><tr>${headers.map(h => `<th class="numeric">${h}</th>`).join('')}</tr></thead><tbody>`; jsonData.forEach(row => { html += '<tr>'; headers.forEach(header => { const val = row[header]; const isDate = header === dateCol; const isCurrency = header === revenueCol; const isImps = header === impsCol; let cellVal = (val === undefined || val === null) ? '' : val; if(isDate) cellVal = formatDate(val); else if (isCurrency) cellVal = `$${formatCurrency(val)}`; else if (isImps || (typeof val === 'number' && !isDate)) cellVal = formatNumber(val); html += `<td class="numeric">${cellVal}</td>`; }); html += '</tr>'; }); const tableData = jsonData.map(row => { const newRow = {...row}; delete newRow.jsDate; newRow[dateCol] = formatDate(newRow[dateCol]); return newRow; }); renderOutput("Rubicon/Magnite", `<table>${html}</tbody></table>`, 'outputTable2', { fileName, tableData }); }
+    function processTool3(workbook, fileName) { const sheetName = workbook.SheetNames.find(s => s.toLowerCase().startsWith("ad requests")); if (!sheetName) throw new Error(`Sheet "Ad Requests..." not found.`); const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: null, cellDates: true }); const headerRowIndex = raw.findIndex(r => r && r.some(c => String(c).toLowerCase().includes('net revenue'))); if (headerRowIndex === -1) throw new Error("Could not find a header row."); const headers = raw[headerRowIndex].map(h => String(h).toLowerCase()); const colMap = { d: headers.findIndex(h => h.includes("date")), i: headers.findIndex(h => h.includes("impression")), r: headers.findIndex(h => h.includes("net revenue")) }; if(Object.values(colMap).some(i => i===-1)) throw new Error("Missing Date, Impression or Net Revenue columns."); const sorted = raw.slice(headerRowIndex+1).map(row => { if(!row || !row[colMap.d]) return null; return { Date: formatDate(row[colMap.d]), Impressions: row[colMap.i], 'Net Revenue': row[colMap.r] } }).filter(r => r && r.Date && r.Impressions !== null && r['Net Revenue'] !== null).sort((a, b) => new Date(a.Date) - new Date(b.Date)); if (!sorted.length) throw new Error("No valid data found."); let html = "<thead><tr><th>Date</th><th class='numeric'>Impressions</th><th class='numeric'>Net Revenue</th></tr></thead><tbody>"; sorted.forEach(row => html += `<tr><td>${row.Date}</td><td class='numeric'>${formatNumber(row.Impressions)}</td><td class='numeric'>$${formatCurrency(row['Net Revenue'])}</td></tr>`); renderOutput("Verizon/Yahoo", `<table>${html}</tbody></table>`, 'outputTable3', { fileName, tableData: sorted }); }
+    function processTool4(workbook, fileName) { const sheetName = workbook.SheetNames.find(name => name.toLowerCase().includes("report")); if (!sheetName) throw new Error("Sheet containing 'report' not found."); const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {cellDates: true}); if (!json.length) throw new Error("No valid data found."); const filtered = json.map(row => ({ Date: formatDate(row.day || row.Day), Impressions: row.imps || row.Imps || 0, 'Net Revenue': row.revenue || row.Revenue || 0 })).filter(r => r.Date).sort((a,b) => new Date(a.Date) - new Date(b.Date)); let html = "<thead><tr><th>Date</th><th class='numeric'>Impressions</th><th class='numeric'>Net Revenue</th></tr></thead><tbody>"; filtered.forEach(row => html += `<tr><td>${row.Date}</td><td class='numeric'>${formatNumber(row.Impressions)}</td><td class='numeric'>$${formatCurrency(row['Net Revenue'])}</td></tr>`); renderOutput("Xandr/AppNexus", `<table>${html}</tbody></table>`, "outputTable4", { fileName, tableData: filtered }); }
+    function processTool5(workbook, fileName) { const sheet = workbook.Sheets[workbook.SheetNames[0]]; if (!sheet) throw new Error("No sheet found."); const json = XLSX.utils.sheet_to_json(sheet, { defval: null, cellDates: true }); if (!json.length) throw new Error("No data found."); if (!json[0] || !json[0].hasOwnProperty("YMD") || !json[0].hasOwnProperty("REVENUE") || !json[0].hasOwnProperty("RENDERED")) { throw new Error("Sheet must contain YMD, REVENUE, and RENDERED columns."); } const tableData = json.map(row => ({ Date: formatDate(row.YMD), Impressions: row.RENDERED, 'Net Revenue': row.REVENUE })).filter(r => r.Date).sort((a,b) => new Date(a.Date) - new Date(b.Date)); let html = "<thead><tr><th>Date</th><th class='numeric'>Impressions</th><th class='numeric'>Net Revenue</th></tr></thead><tbody>"; tableData.forEach(row => html += `<tr><td>${row.Date}</td><td class='numeric'>${formatNumber(row.Impressions)}</td><td class='numeric'>$${formatCurrency(row['Net Revenue'])}</td></tr>`); renderOutput("TripleLift (HB)", `<table>${html}</tbody></table>`, "outputTable5", { fileName, tableData }); }
+    function processTool6(workbook, fileName) { let raw, headerRowIndex = -1; for (const sheetName of workbook.SheetNames) { const currentSheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: null, raw: false }); const idx = currentSheet.findIndex(r => r && r.some(c => String(c).toLowerCase().includes('datehour')) && r.some(c => String(c).toLowerCase().includes('ad renders')) && r.some(c => String(c).toLowerCase().includes('publisher revenue'))); if(idx > -1) { raw = currentSheet; headerRowIndex = idx; break; } } if (!raw) throw new Error("No sheet with expected columns (datehour, Ad Renders, Publisher Revenue) found."); const headers = raw[headerRowIndex].map(h => String(h).toLowerCase()); const colMap = { d: headers.indexOf('datehour'), i: headers.indexOf('ad renders'), r: headers.indexOf('publisher revenue') }; const sorted = raw.slice(headerRowIndex+1).map(r => { if(!r || !r[colMap.d]) return null; return ({ Date: formatDate(new Date(r[colMap.d])), Impressions: Number(r[colMap.i]), 'Net Revenue': Number(r[colMap.r]) }) }).filter(r=>r && r.Date).sort((a, b) => new Date(a.Date) - new Date(b.Date)); let html = "<thead><tr><th>Date</th><th class='numeric'>Impressions</th><th class='numeric'>Net Revenue</th></tr></thead><tbody>"; sorted.forEach(row => html += `<tr><td>${row.Date}</td><td class='numeric'>${formatNumber(row.Impressions)}</td><td class='numeric'>$${formatCurrency(row['Net Revenue'], 6)}</td></tr>`); renderOutput("Cadent", `<table>${html}</tbody></table>`, "outputTable6", { fileName, tableData: sorted }); }
+    function processTool7(workbook, fileName) { let raw, headerRowIndex = -1; for (const name of workbook.SheetNames) { const currentSheet = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: null }); const idx = currentSheet.findIndex(r => r && r.some(c=>String(c) === 'Date') && r.some(c=>String(c) === 'Revenue') && r.some(c=>String(c) === 'Ad Impr.')); if(idx > -1) { raw = currentSheet; headerRowIndex = idx; break; } } if (!raw) throw new Error("No sheet with 'Date', 'Revenue', and 'Ad Impr.' found."); const headers = raw[headerRowIndex].map(h => String(h)); const colMap = { d: headers.indexOf('Date'), r: headers.indexOf('Revenue'), i: headers.indexOf('Ad Impr.') }; if(Object.values(colMap).some(i=>i===-1)) throw new Error("Missing Date, Revenue, or Ad Impr. columns."); const tableData = raw.slice(headerRowIndex+1).map(r => { if(!r || !r[colMap.d]) return null; return ({ Date: formatDate(r[colMap.d]), Impressions: r[colMap.i], 'Net Revenue': r[colMap.r] }) }).filter(r => r && r.Date).sort((a,b) => new Date(a.Date) - new Date(b.Date)); if(!tableData.length) throw new Error("No valid data rows found."); let html = "<thead><tr><th>Date</th><th class='numeric'>Impressions</th><th class='numeric'>Net Revenue</th></tr></thead><tbody>"; tableData.forEach(row => html += `<tr><td>${row.Date}</td><td class='numeric'>${formatNumber(row.Impressions)}</td><td class='numeric'>$${formatCurrency(row['Net Revenue'])}</td></tr>`); renderOutput("Media.net (HB)", `<table>${html}</tbody></table>`, "outputTable7", { fileName, tableData }); }
+    function processTool8(workbook, fileName) { const sheetName = workbook.SheetNames.find(name => name.toLowerCase() === "in") || workbook.SheetNames[0]; const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: null }); const headerRowIndex = raw.findIndex(r => r && r.some(c => String(c).toLowerCase().includes('date')) && r.some(c => String(c).toLowerCase().includes('impression') || String(c).toLowerCase().includes('rendered')) && r.some(c => String(c).toLowerCase().includes('earning') || String(c).toLowerCase().includes('revenue'))); if(headerRowIndex === -1) throw new Error("Could not find header row with Date, Impressions/Rendered, and Earnings/Revenue."); const headers = raw[headerRowIndex].map(h => String(h).toLowerCase()); const colMap = { d: headers.findIndex(h => h.includes('date')), i: headers.findIndex(h => h.includes('impression') || h.includes('rendered')), e: headers.findIndex(h => h.includes('earning') || h.includes('revenue')) }; if(Object.values(colMap).some(i=>i===-1)) throw new Error("Could not find all required columns."); const validRows = raw.slice(headerRowIndex + 1).map(row => { if(!row || !row[colMap.d]) return null; return ({ Date: formatDate(row[colMap.d]), Impressions: row[colMap.i], 'Net Revenue': row[colMap.e] }) }).filter(r => r && r.Date && r.Impressions !== null && r['Net Revenue'] !== null).sort((a,b) => new Date(a.Date) - new Date(b.Date)); if (!validRows.length) throw new Error("No processable data rows found."); let html = "<thead><tr><th>Date</th><th class='numeric'>Impressions</th><th class='numeric'>Net Revenue</th></tr></thead><tbody>"; validRows.forEach(row => html += `<tr><td>${row.Date}</td><td class='numeric'>${formatNumber(row.Impressions)}</td><td class='numeric'>$${formatCurrency(row['Net Revenue'])}</td></tr>`); renderOutput("Sharethrough (HB)", `<table>${html}</tbody></table>`, "outputTable8", { fileName, tableData: validRows }); }
+  })();
+  </script>
+
+</body>
+</html>
