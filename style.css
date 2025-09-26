@@ -218,4 +218,11 @@ td.cell-selected, th.cell-selected {
   .output-panel { padding: 24px; }
   .results-header { flex-direction: column; align-items: flex-start; }
   .table-container { max-height: 60vh; }
+
+}
+#header-logo {
+  height: 36px;
+  margin-right: 8px; /* This now adds space to the RIGHT */
+  vertical-align: middle;
+  transform: translateY(-3px);
 }
