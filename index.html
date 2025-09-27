@@ -8,14 +8,14 @@
   <!-- This line imports the 'xlsx' library from a remote server. -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
-  <!-- This line links to your new stylesheet -->
+  <!-- This line links to your stylesheet -->
   <link rel="stylesheet" href="style.css">
 
 </head>
 <body>
 
   <header class="app-header">
-<h1><img src="logo.gif" alt="Animated Falcon Logo" id="header-logo"> PROJECT FALCON</h1>
+    <h1><img src="logo.gif" alt="Animated Falcon Logo" id="header-logo"> PROJECT FALCON</h1>
   </header>
 
   <main class="app-container">
@@ -23,7 +23,10 @@
       <div class="tool-accordion" id="toolAccordion">
         
         <div class="tool-card active" data-tool="tool1"><div class="tool-header"><h2>AdX and Private Auction</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">AdX & PMP Daily Report File</label><span class="file-name-hint">e.g., Kohl's Daily-AdX - by type</span><div class="drop-zone" data-input-id="inputFile1"><input type="file" id="inputFile1" accept=".xlsx,.xls,.xlsm,.csv"/><div class="drop-zone-icon">📥</div><span class="drop-zone-text">Drag & Drop or Click</span></div></div><button class="btn" data-action="process">Process Report</button></div></div>
-        <div class="tool-card" data-tool="bidding"><div class="tool-header"><h2>Sovrn OB, Rubicon OB, Media.net OB, PubMatic OB, TripleLift, Sharethrough OB, OneTag OB</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Open Bidding Report File</label><span class="file-name-hint">e.g., Kohl's Daily-Open Bidding</span><div class="drop-zone" data-input-id="biddingFile"><input type="file" id="biddingFile" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon">📥</div><span class="drop-zone-text">Drag & Drop or Click</span></div></div><button class="btn" data-action="process">Process Report</button></div></div>
+        
+        <!-- The H2 title below was simplified for clarity -->
+        <div class="tool-card" data-tool="bidding"><div class="tool-header"><h2>Open Bidding Partners</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Open Bidding Report File</label><span class="file-name-hint">e.g., Kohl's Daily-Open Bidding</span><div class="drop-zone" data-input-id="biddingFile"><input type="file" id="biddingFile" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon">📥</div><span class="drop-zone-text">Drag & Drop or Click</span></div></div><button class="btn" data-action="process">Process Report</button></div></div>
+        
         <div class="tool-card" data-tool="tool2"><div class="tool-header"><h2>Rubicon/Magnite</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Excel File with 'report' sheet</label><span class="file-name-hint">e.g., [Magnite Report] Daily Kohls - Rubicon...</span><div class="drop-zone" data-input-id="excelFile2"><input type="file" id="excelFile2" accept=".xlsx, .xls"/><div class="drop-zone-icon">📥</div><span class="drop-zone-text">Drag & Drop or Click</span></div></div><button class="btn" data-action="process">Process Report</button></div></div>
         <div class="tool-card" data-tool="citrusPivot"><div class="tool-header"><h2>Pubmatic Openwrap</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">Openwrap Report File</label><span class="file-name-hint">e.g., Pubmatic Openwrap Performance...</span><div class="drop-zone" data-input-id="citrusFile"><input type="file" id="citrusFile" accept=".xlsx,.xls,.csv"/><div class="drop-zone-icon">📂</div><span class="drop-zone-text">Drag & Drop or Click</span></div></div><button class="btn" data-action="process">Process Report</button></div></div>
         <div class="tool-card" data-tool="tool3"><div class="tool-header"><h2>Verizon/Yahoo</h2><div class="chevron">▼</div></div><div class="tool-body"><div class="upload-group"><label class="upload-label">File with 'Ad Requests...' sheet</label><span class="file-name-hint">e.g., Report: Kohls (SSP) - Daily Net Revenue...</span><div class="drop-zone" data-input-id="fileInput3"><input type="file" id="fileInput3" accept=".xlsx,.xls,.xlsb,.csv"/><div class="drop-zone-icon">📥</div><span class="drop-zone-text">Drag & Drop or Click</span></div></div><button class="btn" data-action="process">Process Report</button></div></div>
@@ -43,7 +46,7 @@
     </section>
   </main>
 
-  <!-- This line links to your new JavaScript file -->
+  <!-- This line links to your JavaScript file -->
   <script src="script.js"></script>
 
 </body>
